@@ -517,7 +517,7 @@ function renderShell(){
   const pc = S.studentsLoaded ? pendingCount() : 0;
   $("#sideNav").innerHTML = ROUTES.map(r => `<a href="#${r.id}" ${S.route===r.id?'aria-current="page"':''}>${ICONS[r.icon]}<span>${r.label}</span>${r.id==="pending"&&pc?`<span class="badge num">${pc}</span>`:""}</a>`).join("");
   $("#tabBar").innerHTML = ROUTES.map(r => `<a href="#${r.id}" ${S.route===r.id?'aria-current="page"':''}>${ICONS[r.icon]}<span>${r.short||r.label}</span>${r.id==="pending"&&pc?`<span class="dot num">${pc}</span>`:""}</a>`).join("");
-  $("#sideFoot").textContent = store ? (S.canWrite ? (S.mode === "local" ? "Saved on this laptop. Open it on your phone from Settings." : "Saved automatically. Works on any device you're signed in on.") : "View only") : "";
+  $("#sideFoot").textContent = store ? (S.canWrite ? (S.mode === "local" ? (S.cloud ? "Saved online. Open it on any phone from Settings." : "Saved on this laptop. Open it on your phone from Settings.") : "Saved automatically. Works on any device you're signed in on.") : "View only") : "";
 }
 
 function banners(){
@@ -525,7 +525,9 @@ function banners(){
   if(S.noDb) out += location.protocol === "file:" || !(window.claude && window.claude.use)
     ? `<div class="banner bad"><span>The register isn't running. Close this page, double-click <b>start-windows.bat</b> (or start-mac-linux.sh) in the register folder, and use the address it opens.</span></div>`
     : `<div class="banner bad"><span>The register's data can't be opened in this view. Open the page on claude.ai while signed in to see and save students.</span></div>`;
-  else if(S.offline && S.mode === "local") out += `<div class="banner bad"><span>Can't reach the laptop. Check that it's switched on, the register window is open, and this phone is on the same Wi‑Fi.</span></div>`;
+  else if(S.offline && S.mode === "local") out += S.cloud
+    ? `<div class="banner bad"><span>Can't reach the register right now. Check the internet connection; changes will show once it's back.</span></div>`
+    : `<div class="banner bad"><span>Can't reach the laptop. Check that it's switched on, the register window is open, and this phone is on the same Wi‑Fi.</span></div>`;
   else if(S.offline && S.mode !== "local") out += `<div class="banner bad"><span>Can't reach the register right now, so what you see may be out of date. Check the internet connection.</span></div>`;
   if(store && !S.canWrite) out += `<div class="banner acc"><span>${h(S.readOnlyReason || "You can view this register but not change it.")}</span></div>`;
   const samples = S.students.filter(s => s.sample);
@@ -1653,11 +1655,11 @@ function localStore(){
 function viewLogin(){
   return `<div style="max-width:380px;margin:8vh auto 0">
     <div class="card"><form class="card-b section-gap" id="form-login" style="gap:14px">
-      <div><h1 style="font-size:24px">Enter PIN</h1><p class="muted" style="margin:4px 0 0">This fee register is protected. Use the PIN chosen when it was set up on the laptop.</p></div>
+      <div><h1 style="font-size:24px">Enter PIN</h1><p class="muted" style="margin:4px 0 0">This fee register is protected. ${S.cloud ? "Enter the PIN you were given." : "Use the PIN chosen when it was set up on the laptop."}</p></div>
       <div class="field"><label for="login-pin">PIN</label><input class="input num" id="login-pin" name="pin" type="password" inputmode="numeric" autocomplete="current-password" required autofocus style="font-size:20px;letter-spacing:.3em"></div>
       <p class="small" id="login-err" style="color:var(--bad);margin:0" hidden></p>
       <button class="btn btn-primary" type="submit">Open register</button>
-      <p class="small muted" style="margin:0">This device stays signed in afterwards. Forgot the PIN? On the laptop, run <b>python server.py --reset-pin</b>.</p>
+      <p class="small muted" style="margin:0">This device stays signed in afterwards. ${S.cloud ? "Forgot the PIN? Change the <b>REGISTER_PIN</b> secret in Cloudflare." : "Forgot the PIN? On the laptop, run <b>python server.py --reset-pin</b>."}</p>
     </form></div></div>`;
 }
 document.addEventListener("submit", async e => {
@@ -1665,7 +1667,7 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const pin = e.target.pin.value.trim(); const err = $("#login-err"); const btn = e.target.querySelector("button"); btn.disabled = true;
   try { await store.api("POST", "/api/login", {pin}); S.needLogin = false; S.loading = true; render(); await store.refresh(); }
-  catch(x){ err.textContent = x.message || (x.code === "unavailable" ? "Can't reach the laptop. Check that it's on and the register is running." : "Wrong PIN. Try again."); err.hidden = false; btn.disabled = false; }
+  catch(x){ err.textContent = x.message || (x.code === "unavailable" ? (S.cloud ? "Can't reach the register. Check the internet connection." : "Can't reach the laptop. Check that it's on and the register is running.") : "Wrong PIN. Try again."); err.hidden = false; btn.disabled = false; }
 });
 async function loadLocalInfo(){
   try { S.localInfo = await store.api("GET", "/api/info"); } catch(e){ S.localInfo = null; }
@@ -1679,9 +1681,9 @@ function localPhoneCard(){
     <div class="card-b" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
       <div id="qr" style="width:148px;height:148px;background:#fff;border-radius:10px;padding:6px;flex:none;display:${urls.length?"block":"none"}"></div>
       <div style="flex:1;min-width:220px">
-        ${urls.length ? `<p style="margin:0 0 6px">Connect the phone to the <b>same Wi‑Fi</b> as this laptop, then scan the code or open:</p>
+        ${urls.length ? `<p style="margin:0 0 6px">${S.cloud ? "Open this address on any phone, anywhere with internet. Scan the code or type:" : "Connect the phone to the <b>same Wi‑Fi</b> as this laptop, then scan the code or open:"}</p>
           ${urls.map(u => `<p style="margin:0 0 4px"><b class="num" style="font-size:17px">${h(u)}</b> <button class="btn btn-ghost btn-sm" data-act="copy" data-text="${h(u)}">${ICONS.copy}</button></p>`).join("")}
-          <p class="small muted" style="margin:8px 0 0">Enter the same PIN on the phone. In Chrome, use <b>⋮ › Add to Home screen</b> so it opens like an app. The laptop must be on with the register running.</p>`
+          <p class="small muted" style="margin:8px 0 0">Enter the same PIN on the phone. In Chrome, use <b>⋮ › Add to Home screen</b> so it opens like an app.${S.cloud ? "" : " The laptop must be on with the register running."}</p>`
         : `<p class="muted" style="margin:0">This laptop isn't connected to a Wi‑Fi network, so phones can't reach it right now.</p>`}
       </div>
     </div>
@@ -1709,7 +1711,7 @@ route();
   if(!hasClaude){
     /* Running from the laptop server */
     let ok = false;
-    try { const r = await fetch("/api/ping", {cache:"no-store"}); ok = r.ok && (await r.json()).app === "school-fee-register"; } catch(e){}
+    try { const r = await fetch("/api/ping", {cache:"no-store"}); const j = r.ok ? await r.json() : {}; ok = j.app === "school-fee-register"; S.cloud = !!j.cloud; } catch(e){}
     if(!ok){ S.loading = false; S.noDb = true; S.studentsLoaded = true; render(); return; }
     S.mode = "local"; store = localStore(); store.start();
     return;

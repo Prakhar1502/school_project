@@ -1,9 +1,19 @@
-// Cloudflare Workers settings: publishes this folder as a static website.
-// The live register still needs server.py (see README); this only hosts the files.
+// Cloudflare Workers settings for the online version of the School Fee Register.
+// - worker/index.js answers /api/* and stores data in the D1 database below.
+// - Everything else (index.html, docs) is served as static files.
+// - The PIN is a secret: Worker → Settings → Variables and Secrets → REGISTER_PIN.
 {
   "name": "school-project",
+  "main": "worker/index.js",
   "compatibility_date": "2026-06-01",
   "assets": {
-    "directory": "./"
-  }
+    "directory": "./",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // Created automatically on the first deploy (no id needed).
+  "d1_databases": [
+    { "binding": "DB", "database_name": "school-fee-register" }
+  ],
+  "observability": { "enabled": true }
 }

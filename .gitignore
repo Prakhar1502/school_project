@@ -18,3 +18,9 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+
+# Cloudflare local development
+.wrangler/
+.dev.vars
+.dev.vars.*
+node_modules/

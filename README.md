@@ -2,7 +2,9 @@
 
 A free, self-hosted fee manager for small schools. It keeps student records, tracks monthly fees, shows who owes what, sends fee reminders on WhatsApp in English or Hindi, and makes PDF receipts.
 
-It runs on one laptop with nothing to install except Python. Phones on the same Wi‑Fi can use it too.
+There are two ways to run it, with the same app either way:
+- **Online, on Cloudflare (free):** use it from any phone, anywhere. See [docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md).
+- **On one laptop:** nothing to install except Python. Phones on the same Wi‑Fi can use it too.
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
@@ -25,11 +27,19 @@ It runs on one laptop with nothing to install except Python. Phones on the same 
 - **PDF receipts:** an A5 receipt for every payment, showing months covered, amount in words, balance left and a PAID stamp. Download one, or download a whole period as one PDF.
 - **Dashboard:** collected vs pending, collection by month, pending by class, today's collection.
 - **New session:** carries unpaid fees forward and moves every student up one class.
-- **Phone access:** open it on any phone on the same Wi‑Fi. Protected by a PIN, and works like an app when added to the home screen.
+- **Phone access:** online from anywhere (Cloudflare), or over the school Wi‑Fi (laptop). Protected by a PIN, and works like an app when added to the home screen.
 - **Backups:** automatic daily database backups (last 60 kept), plus CSV export for Excel.
-- **Private:** all data stays on the school's own laptop. No cloud, no accounts, no tracking.
+- **Private:** data stays on the school's laptop, or in your own Cloudflare account. It's protected by a PIN, with no tracking.
 
-## Quick start
+## Quick start: online (Cloudflare)
+
+1. Connect this repo in **Cloudflare → Workers & Pages → Create → Import a repository**. Leave the build command empty. The deploy command is `npx wrangler deploy`.
+2. Add a secret named **`REGISTER_PIN`** under **Settings → Variables and Secrets**.
+3. Deploy. The D1 database is created automatically on the first deploy.
+
+Full steps: **[docs/DEPLOY-CLOUDFLARE.md](docs/DEPLOY-CLOUDFLARE.md)**
+
+## Quick start: laptop
 
 **Requirements:** Python 3.8 or newer. No packages to install.
 
@@ -62,14 +72,17 @@ For a step-by-step guide written for school staff (installing Python, phone setu
 ## How it works
 
 ```
-index.html     the whole app: plain HTML, CSS and JavaScript, no build step, no framework
-server.py      Python standard library only: HTTP server, SQLite storage, PIN sign-in, daily backups
+index.html        the whole app: plain HTML, CSS and JavaScript, no build step, no framework
+server.py         laptop backend, Python standard library only: HTTP server, SQLite, PIN sign-in, daily backups
+worker/index.js   online backend for Cloudflare Workers: the same API, stored in D1
+wrangler.jsonc    Cloudflare settings (Worker, static files, D1 binding)
 data/          created on first run, never committed (see .gitignore)
   fees.db      SQLite database: students (one JSON document each, with their payments) and settings
   backups/     fees-YYYY-MM-DD.db, one per day
 ```
 
 - **API:** `GET /api/state` (with a revision number so polling is cheap), `PUT/PATCH/DELETE /api/students/<id>`, `PUT /api/settings`, `POST /api/login`, `POST /api/logout`, `GET /api/info`.
+- **Two backends, one API:** `server.py` (laptop, SQLite file) and `worker/index.js` (Cloudflare, D1) answer the same requests, so `index.html` doesn't need to know which one it's talking to.
 - **Sync:** every open device polls about every 6 seconds and whenever it comes back into view, so the laptop and phones stay in step.
 - **Security:** the PIN is stored as a salted PBKDF2 hash. Sign-in tokens are HttpOnly cookies, stored hashed. Wrong PINs are rate-limited. Requests from other websites are refused (Origin check). The server only listens on your local network.
 - **Receipts** are drawn on a `<canvas>`, so any script, including Hindi, renders correctly. They're written into a PDF by a tiny built-in writer, with no PDF library.
@@ -78,7 +91,8 @@ data/          created on first run, never committed (see .gitignore)
 
 ## Limitations
 
-- The laptop must be on, with the server running, for phones to connect. Phones only connect over the same Wi‑Fi. For remote access, see the optional Cloudflare tunnel section in the user guide.
+- **Laptop version:** the laptop must be on, with the server running, and phones connect only over the same Wi‑Fi. For access from anywhere, use the Cloudflare version.
+- The laptop and Cloudflare versions keep separate data. Pick one for real records.
 - Reminders are sent one tap per parent. Fully automatic WhatsApp messages need the paid WhatsApp Business API.
 - Built for a single school with up to a few thousand students.
 

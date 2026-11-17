@@ -15,3 +15,8 @@ wrangler.jsonc
 .gitignore
 .gitattributes
 __pycache__
+worker
+.dev.vars
+.dev.vars.*
+package.json
+package-lock.json
