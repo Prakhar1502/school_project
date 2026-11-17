@@ -1,0 +1,20 @@
+# Student data, PINs and backups: never commit
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Exports people may save next to the app
+*.csv
+Receipt-*.pdf
+Receipts-*.pdf
+
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
