@@ -1,0 +1,17 @@
+# Files that should not be published on the website
+.git
+.github
+.wrangler
+node_modules
+data
+*.db
+*.db-shm
+*.db-wal
+server.py
+start-windows.bat
+start-mac-linux.sh
+wrangler.jsonc
+.assetsignore
+.gitignore
+.gitattributes
+__pycache__

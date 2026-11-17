@@ -1,0 +1,9 @@
+// Cloudflare Workers settings: publishes this folder as a static website.
+// The live register still needs server.py (see README); this only hosts the files.
+{
+  "name": "school-project",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "./"
+  }
+}
